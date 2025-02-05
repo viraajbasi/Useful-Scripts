@@ -1,0 +1,24 @@
+#!/bin/bash
+
+SCRIPT_NAME="$(basename "${0}")"
+
+list_illegal_file_names() {
+	export LC_ALL=C
+	find "${1}" -name '*[[:cntrl:]<>:"\\|?*]*' \
+					-o -iname 'CON' \
+					-o -iname 'PRN' \
+					-o -iname 'AUX' \
+					-o -iname 'NUL' \
+					-o -iname 'COM[1-9]' \
+					-o -iname 'LPT[1-9]' \
+					-o -iname '* ' \
+					-o -iname '?*.'
+}
+
+if [ -d "${1}" ]; then
+	list_illegal_file_names "${1}"
+	exit 0
+else
+	printf "Usage:\n\t%s </path/to/directory>\n" "${SCRIPT_NAME}"
+	exit 1
+fi

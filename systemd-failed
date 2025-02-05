@@ -1,0 +1,31 @@
+#!/bin/bash
+
+format_failed_units() {
+    if [ -n "${1}" ]; then
+        while IFS= read -r line; do
+            declare formatted="${formatted}• ${line}\n"
+        done <<< "${1}"
+    else
+        formatted="None\n"
+    fi
+    
+    printf "%s\n" "${formatted}"
+}
+
+SYSTEM_FAILED=$(systemctl --system --failed --no-legend | awk '{print $2}')
+USER_FAILED=$(systemctl --user --failed --no-legend | awk '{print $2}')
+
+SYSTEM_COUNT=$(printf "%s" "${SYSTEM_FAILED}" | grep -c '^' || true)
+USER_COUNT=$(printf "%s" "${USER_FAILED}" | grep -c '^' || true)
+TOTAL_COUNT=$((SYSTEM_COUNT + USER_COUNT))
+
+NOTIFICATION_BODY="System Units:\n"
+NOTIFICATION_BODY+="$(format_failed_units "${SYSTEM_FAILED}")"
+NOTIFICATION_BODY+="\nUser Units:\n"
+NOTIFICATION_BODY+="$(format_failed_units "${USER_FAILED}")"
+
+if [ $TOTAL_COUNT -gt 0 ]; then
+	notify-send -u critical -i error "Failed Systemd Units ($TOTAL_COUNT)" "${NOTIFICATION_BODY}"
+else
+	notify-send -e -i ok "No Failed Units" "Systemd has not reported any failed units."
+fi

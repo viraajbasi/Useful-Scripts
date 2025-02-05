@@ -1,0 +1,28 @@
+#!/bin/sh
+
+SCRIPT_NAME="$(basename "${0}")"
+
+update_repos() {
+	for dir in $(find "${1}" -mindepth 1 -maxdepth 1 -type d); do
+		if [ -d "${dir}" ]; then
+			printf "Checking directory: %s\n" "${dir}"
+			if [ -d "${dir}/.git" ]; then
+				printf "Pulling latest changes in %s...\n" "${dir}"
+				cd "${dir}" || continue
+				git pull
+				cd - > /dev/null || exit
+			else
+				printf "%s is not a git repository, skipping.\n" "${dir}"
+			fi
+		fi
+	done
+	printf "Update Process Completed.\n"
+}
+
+if [ -d "${1}" ]; then
+	update_repos "${1}"
+	exit 0
+else
+	printf "Usage:\n\t%s </path/to/directory>\n" "${SCRIPT_NAME}"
+	exit 1
+fi

@@ -1,0 +1,7 @@
+#!/bin/sh
+
+APPLICATION_NAME="$(basename "${0}")"
+
+export HOME="/path/to/custom/home"
+
+exec /path/to/application "$@" || notify-send -u critical -i error "Error Launching Application" "Failed to launch ${APPLICATION_NAME}."

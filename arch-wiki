@@ -1,0 +1,15 @@
+#!/bin/bash
+
+DMENU_CMD="fuzzel -d"
+BROWSER="xdg-open"
+WIKIDIR=/usr/share/doc/arch-wiki/html/en/
+
+ARTICLES=$(find ${WIKIDIR} -iname "*.html")
+CHOICE=$(printf '%s\n' "${ARTICLES[@]}" | cut -d '/' -f8- | sed 's/_/ /g;s/.html//g' | sort | ${DMENU_CMD} "$@")
+
+if [ "${CHOICE}" ]; then
+    ARTICLE=$(printf '%s\n' "${WIKIDIR}${CHOICE}.html" | sed 's/ /_/g')
+    exec ${BROWSER} "${ARTICLE}"
+else
+    printf "Program Terminated\n"
+fi

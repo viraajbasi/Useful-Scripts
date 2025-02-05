@@ -1,0 +1,108 @@
+#!/bin/bash
+
+STEP=1
+SCRIPT_NAME="$(basename "${0}")"
+
+get_volume() {
+    local volume=$(wpctl get-volume ${DEVICE} | awk '{print substr($2,0,4)}' | tr -d .)
+    echo $((10#${volume}))
+}
+
+is_muted() {
+	local mute_status=$(wpctl get-volume ${DEVICE} | awk '{print $3}')
+	if [ "${mute_status}" == "[MUTED]" ]; then
+		echo true
+	else
+		echo false
+	fi
+}
+
+get_icon() {
+	if [ "$(get_volume)" -eq "0" ] || [ "$(is_muted)" == "true" ]; then
+		echo ${VOL_MUTE}
+	elif [ "$(get_volume)" -ge "0" ] && [ "$(get_volume)" -le "30" ]; then
+		echo ${VOL_LOW}
+	elif [ "$(get_volume)" -ge "30" ] && [ "$(get_volume)" -le "60" ]; then
+		echo ${VOL_MID}
+	elif [ "$(get_volume)" -ge "60" ] && [ "$(get_volume)" -le "100" ]; then
+		echo ${VOL_HIGH}
+	fi
+}
+
+notify_user() {
+	notify-send -e -h int:value:"$(get_volume)" -h string:synchronous:volume -i "$(get_icon)" "Volume" "Volume: $(get_volume)%"
+}
+
+step_volume() {
+	wpctl set-volume -l 1 ${DEVICE} ${STEP}%${1}
+	notify_user
+}
+
+toggle_mute() {
+	if [ "$(is_muted)" == "true" ]; then
+        wpctl set-mute ${DEVICE} 0
+		notify_user
+	else
+		wpctl set-mute ${DEVICE} 1
+		notify_user
+	fi
+}
+
+set_volume() {
+    if [ -z "${1}" ]; then
+        echo "Enter the value you would like to change the volume to."
+		exit 1
+    else
+        wpctl set-volume ${DEVICE} ${1}%
+		notify_user
+    fi
+}
+
+help_text() {
+	if [ -n "${1}" ]; then
+		error="${1}"
+		printf "Error: %s\n\n" "${1}"
+	fi
+
+	printf "Description: Control the volume of the default pipewire sink/source.\n\nUsage:\n\t%s {output|input} <command>\n\nCommands:\n\t-g --get\tGet the volume of the default sink.\n\t-i --inc\tIncrement the volume of the default sink by %s%%.\n\t-d --dec\tDecrement the volume of the default sink by %s%%.\n\t-t --toggle\tToggle mute status of the default sink\n\t-s --set VOL%%\tSet the volume of the default sink to the specified value.\n\t-h --help\tShow available commands.\n" "${SCRIPT_NAME}" "${STEP}" "${STEP}"
+}
+
+if [ "${1}" == "output" ]; then
+	declare -g DEVICE="@DEFAULT_AUDIO_SINK@"
+	declare -g VOL_HIGH="audio-volume-high"
+	declare -g VOL_MID="audio-volume-medium"
+	declare -g VOL_LOW="audio-volume-low"
+	declare -g VOL_MUTE="audio-volume-muted"
+elif [ "${1}" == "input" ]; then
+	declare -g DEVICE="@DEFAULT_AUDIO_SOURCE@"
+	declare -g VOL_HIGH="microphone-sensitivity-high"
+	declare -g VOL_MID="microphone-sensitivity-medium"
+	declare -g VOL_LOW="microphone-sensitivity-low"
+	declare -g VOL_MUTE="microphone-sensitivity-muted"
+else
+	help_text 'The first argument must be either "output" or "input".'
+	exit 1
+fi
+
+if [ "${2}" == "-g" ] || [ "${2}" == "--get" ]; then
+    notify_user
+	exit 0
+elif [ "${2}" == "-i" ] || [ "${2}" == "--inc" ]; then
+    step_volume "+"
+	exit 0
+elif [ "${2}" == "-d" ] || [ "${2}" == "--dec" ]; then
+    step_volume "-"
+	exit 0
+elif [ "${2}" == "-t" ] || [ "${2}" == "--toggle" ]; then
+    toggle_mute
+	exit 0
+elif [ "${2}" == "-s" ] || [ "${2}" == "--set" ]; then
+    set_volume "${3}"
+	exit 0
+elif [ "${2}" == "-h" ] || [ "${2}" == "--help" ] || [ -z "${2}" ]; then
+	help_text
+	exit 0
+else
+	help_text "Unkown command."
+	exit 1
+fi
