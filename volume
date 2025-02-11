@@ -30,7 +30,7 @@ get_icon() {
 }
 
 notify_user() {
-	notify-send -e -h int:value:"$(get_volume)" -h string:synchronous:volume -i "$(get_icon)" "Volume" "Volume: $(get_volume)%"
+	notify-send -t 1000 -e -h int:value:"$(get_volume)" -h string:synchronous:volume -i "$(get_icon)" "Volume" "Volume: $(get_volume)%"
 }
 
 step_volume() {
