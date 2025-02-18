@@ -33,6 +33,15 @@ notify_user() {
 	notify-send -t 1000 -e -h int:value:"$(get_volume)" -h string:synchronous:volume -i "$(get_icon)" "Volume" "Volume: $(get_volume)%"
 }
 
+help_text() {
+	if [ -n "${1}" ]; then
+		error="${1}"
+		printf "Error: %s\n\n" "${1}"
+	fi
+
+	printf "Description: Control the volume of the default pipewire sink/source.\n\nUsage:\n\t%s {output|input} <command>\n\nCommands:\n\t-g --get\tGet the volume of the default sink.\n\t-i --inc\tIncrement the volume of the default sink by %s%%.\n\t-d --dec\tDecrement the volume of the default sink by %s%%.\n\t-t --toggle\tToggle mute status of the default sink\n\t-s --set VOL%%\tSet the volume of the default sink to the specified value.\n\t-h --help\tShow available commands.\n" "${SCRIPT_NAME}" "${STEP}" "${STEP}"
+}
+
 step_volume() {
 	wpctl set-volume -l 1 ${DEVICE} ${STEP}%${1}
 	notify_user
@@ -50,21 +59,12 @@ toggle_mute() {
 
 set_volume() {
     if [ -z "${1}" ]; then
-        echo "Enter the value you would like to change the volume to."
+		help_text "Enter the value you would like to change the volume to."
 		exit 1
     else
         wpctl set-volume ${DEVICE} ${1}%
 		notify_user
     fi
-}
-
-help_text() {
-	if [ -n "${1}" ]; then
-		error="${1}"
-		printf "Error: %s\n\n" "${1}"
-	fi
-
-	printf "Description: Control the volume of the default pipewire sink/source.\n\nUsage:\n\t%s {output|input} <command>\n\nCommands:\n\t-g --get\tGet the volume of the default sink.\n\t-i --inc\tIncrement the volume of the default sink by %s%%.\n\t-d --dec\tDecrement the volume of the default sink by %s%%.\n\t-t --toggle\tToggle mute status of the default sink\n\t-s --set VOL%%\tSet the volume of the default sink to the specified value.\n\t-h --help\tShow available commands.\n" "${SCRIPT_NAME}" "${STEP}" "${STEP}"
 }
 
 if [ "${1}" == "output" ]; then
