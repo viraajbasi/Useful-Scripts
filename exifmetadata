@@ -1,6 +1,6 @@
 #!/bin/sh
 
-if [ -z "${@}" ]; then
+if [ -z "${@}" ] || [ ! -f "${@}" ]; then
 	echo "Specify a file."
 	exit 1
 fi
@@ -11,5 +11,6 @@ exiftool "${@}" | sed -r "s/:[ ]*/\n/" | zenity --list \
 												--no-markup \
 												--width=700 \
 												--height=500 \
-												--column="Tag Name" \
+												--column="Tag" \
 												--column="Data"
+exit 0
