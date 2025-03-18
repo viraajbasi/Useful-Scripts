@@ -2,15 +2,12 @@
 
 DMENU_CMD="fuzzel -d"
 
-case $(printf "󱅞 Lock\n󰶐 Turn Off Monitors\n󱩛 Lock & Turn Off Monitors\n󰩈 Log Out\n󰒲 Suspend\n Reboot\n󱇞 Reboot into UEFI\n󰑥 Soft Reboot\n Hibernate\n󰐥 Shutdown" | ${DMENU_CMD}) in
+case $(printf "󱅞 Lock\n󰶐 Turn Off Monitors\n󰩈 Log Out\n󰒲 Suspend\n Reboot\n󱇞 Reboot into UEFI\n󰑥 Soft Reboot\n Hibernate\n󰐥 Shutdown" | ${DMENU_CMD}) in
     "󱅞 Lock")
         loginctl lock-session
         ;;
 	"󰶐 Turn Off Monitors")
 		hyprctl dispatch dpms off
-		;;
-	"󱩛 Lock & Turn Off Monitors")
-		loginctl lock-session && hyprctl dispatch dpms off
 		;;
     "󰩈 Log Out")
 		uwsm stop
