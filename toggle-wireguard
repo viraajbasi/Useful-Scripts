@@ -1,0 +1,10 @@
+#!/bin/sh
+
+VPN_STATUS=$(systemctl is-active wg-quick@pvpn.service)
+if [ "${VPN_STATUS}" == "active" ]; then
+	systemctl stop wg-quick@pvpn.service
+	notify-send -i network-vpn-disconnected "VPN Status" "ProtonVPN Disconnected"
+elif [ "${VPN_STATUS}" == "inactive" ]; then
+	systemctl start wg-quick@pvpn.service
+	notify-send -i network-vpn "VPN Status" "ProtonVPN Connected"
+fi
