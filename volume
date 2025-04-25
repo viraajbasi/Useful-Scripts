@@ -1,7 +1,6 @@
 #!/bin/bash
 
 STEP=1
-SCRIPT_NAME="$(basename "${0}")"
 
 get_volume() {
     local volume=$(wpctl get-volume ${DEVICE} | awk '{print substr($2,0,4)}' | tr -d .)
@@ -39,7 +38,7 @@ help_text() {
 		printf "Error: %s\n\n" "${1}"
 	fi
 
-	printf "Description: Control the volume of the default pipewire sink/source.\n\nUsage:\n\t%s {output|input} <command>\n\nCommands:\n\t-g --get\tGet the volume of the default sink.\n\t-i --inc\tIncrement the volume of the default sink by %s%%.\n\t-d --dec\tDecrement the volume of the default sink by %s%%.\n\t-t --toggle\tToggle mute status of the default sink\n\t-s --set VOL%%\tSet the volume of the default sink to the specified value.\n\t-h --help\tShow available commands.\n" "${SCRIPT_NAME}" "${STEP}" "${STEP}"
+	printf "Description: Control the volume of the default pipewire sink/source.\n\nUsage:\n\tvolume {output|input} <command>\n\nCommands:\n\t-g --get\tGet the volume of the default sink.\n\t-i --inc\tIncrement the volume of the default sink by %s%%.\n\t-d --dec\tDecrement the volume of the default sink by %s%%.\n\t-t --toggle\tToggle mute status of the default sink\n\t-s --set VOL%%\tSet the volume of the default sink to the specified value.\n\t-h --help\tShow available commands.\n" "${STEP}" "${STEP}"
 }
 
 step_volume() {

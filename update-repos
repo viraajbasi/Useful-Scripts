@@ -1,7 +1,5 @@
 #!/bin/sh
 
-SCRIPT_NAME="$(basename "${0}")"
-
 update_repos() {
 	for dir in $(find "${1}" -mindepth 1 -maxdepth 1 -type d); do
 		if [ -d "${dir}" ]; then
@@ -23,6 +21,6 @@ if [ -d "${1}" ]; then
 	update_repos "${1}"
 	exit 0
 else
-	printf "Usage:\n\t%s </path/to/directory>\n" "${SCRIPT_NAME}"
+	printf "Usage:\n\tupdate-repos </path/to/directory>\n"
 	exit 1
 fi
