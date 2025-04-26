@@ -1,0 +1,18 @@
+#!/bin/sh
+
+##########################
+## === Dependencies === ##
+## curl                 ##
+##########################
+
+LOCATION=""
+if [ -n "${WEATHER_LOCATION}" ]; then
+	LOCATION="${WEATHER_LOCATION}"
+else
+	LOCATION="${1}"
+fi
+
+TEXT=$(curl -s "wttr.in/${LOCATION}?format=1")
+TOOLTIP=$(curl -s "wttr.in/${LOCATION}?format=4")
+
+printf '{"text":"%s", "tooltip":"%s"}\n' "${TEXT}" "${TOOLTIP}"
