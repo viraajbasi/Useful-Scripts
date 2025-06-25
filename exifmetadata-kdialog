@@ -1,0 +1,12 @@
+#!/bin/bash
+
+if [ -z "${@}" ] || [ ! -f "${@}" ]; then
+	echo "Specify a file."
+	exit 1
+fi
+
+temp_file=$(mktemp)
+exiftool "${@}" > "${temp_file}"
+kdialog --title="Exif Metadata of ${@}" --textbox "${temp_file}" 800 500
+rm "${temp_file}"
+exit 0
