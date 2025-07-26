@@ -9,45 +9,97 @@ PASSWORD_FILE="/root/.backup-password"
 LOG_FILE="/var/log/docker-backup.log"
 RETENTION_DAYS=7
 COMPOSE_FILE="/media/nvme/docker/docker-compose.yml"
-REQUIRED_BINARIES=("docker" "tar" "7z" "find" "du" "grep" "tee" "cat" "mv" "chmod" "diff")
+REQUIRED_BINARIES=("docker" "tar" "7z" "find" "du" "grep" "tee" "cat" "mv" "chmod" "diff" "msmtp")
 SYNCTHING_USER="viraaj"
 SYNCTHING_GROUP="viraaj"
+MSMTP_CONFIG="/root/.msmtprc"
+EMAIL_FILE="/root/.backup-email"
+EMAIL_TO=$(cat "$EMAIL_FILE")
 
 log() {
     echo "$(date '+%Y-%m-%d %H:%M:%S') - $1" | tee -a "$LOG_FILE"
 }
 
+send_error_email() {
+    local error_message="$1"
+    local log_tail=$(tail -20 "$LOG_FILE")
+    local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+    
+    # Create email content with proper headers
+    cat << EOF | msmtp --file="$MSMTP_CONFIG" "$EMAIL_TO"
+To: $EMAIL_TO
+Subject: [BACKUP FAILED] Docker Backup Error on $HOSTNAME - $timestamp
+Date: $(date -R)
+Message-ID: <backup-error-$(date +%s)-$$@$HOSTNAME>
+Content-Type: text/plain; charset=UTF-8
+X-Priority: 1
+X-MSMail-Priority: High
+Importance: high
+
+⚠️  DOCKER BACKUP FAILURE ALERT ⚠️
+
+Server: $HOSTNAME
+Time: $timestamp
+Status: FAILED
+
+Error Details:
+$error_message
+
+Recent Log Entries:
+----------------------------------------
+$log_tail
+----------------------------------------
+
+Action Required:
+Please check the server and resolve the backup issue immediately.
+
+Full log file: $LOG_FILE
+
+This is an automated message from the Docker backup script.
+EOF
+    
+    if [ $? -eq 0 ]; then
+        log "Error notification email sent successfully"
+    else
+        log "WARNING: Failed to send error notification email"
+    fi
+}
+
+handle_error() {
+	local error_msg="$1"
+	log "ERROR: $error_msg"
+	send_error_email "$error_msg"
+	exit 1
+}
+
 for bin in "${REQUIRED_BINARIES[@]}"; do
     if ! command -v "$bin" >/dev/null 2>&1; then
-        log "ERROR: Required binary '$bin' is not installed or not in PATH"
-        exit 1
+        handle_error "Required binary '$bin' is not installed or not in PATH"
     fi
 done
 
 if ! docker compose version >/dev/null 2>&1; then
-    log "ERROR: 'docker compose' is not available. Ensure you're using Docker v2+"
-    exit 1
+    handle_error "'docker compose' is not available. Ensure you're using Docker v2+"
 fi
 
 if [ ! -f "$PASSWORD_FILE" ]; then
-    log "ERROR: Password file not found at $PASSWORD_FILE"
-    echo "Create it with: sudo bash -c 'echo \"your-password\" > $PASSWORD_FILE' && sudo chmod 600 $PASSWORD_FILE"
-    exit 1
+	handle_error "Password file not found at $PASSWORD_FILE. Create it with: sudo bash -c 'echo \"your-password\" > $PASSWORD_FILE' && sudo chmod 600 $PASSWORD_FILE"
 fi
 
 if [ ! -f "$COMPOSE_FILE" ]; then
-    log "ERROR: Docker compose file not found at $COMPOSE_FILE"
-    exit 1
+    handle_error "Docker compose file not found at $COMPOSE_FILE"
 fi
 
 if [ ! -d "$SOURCE_DIR" ]; then
-    log "ERROR: Source directory $SOURCE_DIR does not exist"
-    exit 1
+    handle_error "Source directory $SOURCE_DIR does not exist"
 fi
 
 if [ ! -d "$BACKUP_DIR" ]; then
-	log "ERROR: Backup directory $BACKUP_DIR does not exist"
-	exit 1
+	handle_error "Backup directory $BACKUP_DIR does not exist"
+fi
+
+if [ ! -f "$MSMTP_CONFIG" ]; then
+	handle_error "msmtp configuration file not found at $MSMTP_CONFIG. Please create it for email notifications."
 fi
 
 BACKUP_PASSWORD=$(cat "$PASSWORD_FILE")
@@ -58,15 +110,16 @@ log "Saving current container states"
 docker compose ps > /tmp/docker-states-before-backup.txt
 
 log "Stopping all Docker containers via compose"
-docker compose down
+if ! docker compose down; then
+	handle_error "Failed to stop Docker containers via compose."
+fi
 
 log "Creating tar archive"
 if tar -cf "$BACKUP_TAR" -C "$(dirname "$SOURCE_DIR")" "$(basename "$SOURCE_DIR")"; then
     log "Tar archive created: $BACKUP_TAR"
 else
-    log "ERROR: Failed to create tar archive"
     docker compose up -d
-    exit 1
+    handle_error "Failed to create tar archive"
 fi
 
 log "Creating password-protected 7z archive"
@@ -77,11 +130,10 @@ if 7z a -p"$BACKUP_PASSWORD" -mhe=on "$BACKUP_FILE" "$BACKUP_TAR" >/dev/null; th
     chmod 640 "$BACKUP_FILE"
     rm -f "$BACKUP_TAR"
 else
-    log "ERROR: Failed to create 7z archive"
-    rm -f "$BACKUP_TAR" "$BACKUP_FILE"
+	rm -f "$BACKUP_TAR" "$BACKUP_FILE"
     docker compose up -d
-    exit 1
-fi
+    handle_error "Failed to create 7z archive"
+ fi
 
 log "Verifying backup contents against source directory"
 TMP_VERIFY_DIR=$(mktemp -d)
@@ -105,7 +157,9 @@ rm -rf "$TMP_VERIFY_DIR" "$TMP_EXTRACT_DIR"
 
 
 log "Restarting all Docker containers via compose"
-docker compose up -d
+if ! docker compose up -d; then
+	handle_error "Failed to restart Docker containers via compose"
+fi
 
 log "Checking if syncthing container is running"
 if docker compose ps | grep -q syncthing && docker compose ps syncthing | grep -q "Up"; then
