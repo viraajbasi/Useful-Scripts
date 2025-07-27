@@ -2,7 +2,7 @@
 
 DMENU_CMD="fuzzel -d"
 
-case $(printf "󱅞 Lock\n󰶐 Turn Off Monitors\n Lock and Turn Off Monitors\n󰩈 Log Out\n󰒲 Suspend\n Reboot\n󱇞 Reboot into UEFI\n󰑥 Soft Reboot\n Hibernate\n󰐥 Shutdown" | ${DMENU_CMD}) in
+case $(printf "󱅞 Lock\n󰶐 Turn Off Monitors\n Lock and Turn Off Monitors\n󰩈 Log Out\n󰒲 Suspend\n Reboot\n󱇞 Reboot into UEFI\n Reboot into Windows󰑥 Soft Reboot\n Hibernate\n󰐥 Shutdown" | ${DMENU_CMD}) in
     "󱅞 Lock")
         loginctl lock-session
         ;;
@@ -24,6 +24,8 @@ case $(printf "󱅞 Lock\n󰶐 Turn Off Monitors\n Lock and Turn Off Monitors
     "󱇞 Reboot into UEFI")
         systemctl reboot --firmware-setup
         ;;
+	" Reboot into Windows")
+		systemctl reboot --boot-loader-entry=auto-windows
     "󰑥 Soft Reboot")
         systemctl soft-reboot
         ;;
