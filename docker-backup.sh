@@ -1,4 +1,6 @@
 #!/bin/bash
+set -euo pipefail
+IFS=$'\n\t'
 
 # Configuration
 SOURCE_DIR="/media/nvme/docker"
@@ -8,13 +10,17 @@ BACKUP_FILE="$BACKUP_DIR/backup-$(date +%Y%m%d).7z"
 PASSWORD_FILE="/root/.backup-password"
 LOG_FILE="/var/log/docker-backup.log"
 RETENTION_DAYS=7
-COMPOSE_FILE="/media/nvme/docker/docker-compose.yml"
+COMPOSE_FILE="$SOURCE_DIR/docker-compose.yml"
 REQUIRED_BINARIES=("docker" "tar" "7z" "find" "du" "grep" "tee" "cat" "mv" "chmod" "diff" "msmtp")
 SYNCTHING_USER="viraaj"
 SYNCTHING_GROUP="viraaj"
 MSMTP_CONFIG="/root/.msmtprc"
 EMAIL_FILE="/root/.backup-email"
-EMAIL_TO=$(cat "$EMAIL_FILE")
+EXCLUDE_FILE="/root/.backup-exclude"
+
+# Read credentials
+read -r EMAIL_TO < "$EMAIL_FILE"
+read -r BACKUP_PASSWORD < "$PASSWORD_FILE"
 
 log() {
     echo "$(date '+%Y-%m-%d %H:%M:%S') - $1" | tee -a "$LOG_FILE"
@@ -22,11 +28,13 @@ log() {
 
 send_error_email() {
     local error_message="$1"
-    local log_tail=$(tail -20 "$LOG_FILE")
-    local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+    local log_tail
+    log_tail=$(tail -20 "$LOG_FILE")
+    local timestamp
+    timestamp=$(date '+%Y-%m-%d %H:%M:%S')
     
-    # Create email content with proper headers
-    cat << EOF | msmtp --file="$MSMTP_CONFIG" "$EMAIL_TO"
+    if ! (
+        cat << EOF | msmtp --file="$MSMTP_CONFIG" "$EMAIL_TO"
 To: $EMAIL_TO
 Subject: [BACKUP FAILED] Docker Backup Error on $HOSTNAME - $timestamp
 Date: $(date -R)
@@ -57,64 +65,73 @@ Full log file: $LOG_FILE
 
 This is an automated message from the Docker backup script.
 EOF
-    
-    if [ $? -eq 0 ]; then
-        log "Error notification email sent successfully"
-    else
+    ); then
         log "WARNING: Failed to send error notification email"
+    else
+        log "Error notification email sent successfully"
     fi
 }
 
 handle_error() {
-	local error_msg="$1"
-	log "ERROR: $error_msg"
-	send_error_email "$error_msg"
-	exit 1
+    local error_msg="$1"
+    log "ERROR: $error_msg"
+    send_error_email "$error_msg"
+    exit 1
 }
 
+# Ensure required binaries are installed
 for bin in "${REQUIRED_BINARIES[@]}"; do
     if ! command -v "$bin" >/dev/null 2>&1; then
         handle_error "Required binary '$bin' is not installed or not in PATH"
     fi
 done
 
+# Docker Compose check
 if ! docker compose version >/dev/null 2>&1; then
     handle_error "'docker compose' is not available. Ensure you're using Docker v2+"
 fi
 
-if [ ! -f "$PASSWORD_FILE" ]; then
-	handle_error "Password file not found at $PASSWORD_FILE. Create it with: sudo bash -c 'echo \"your-password\" > $PASSWORD_FILE' && sudo chmod 600 $PASSWORD_FILE"
-fi
+# Validate files/directories
+[ -f "$PASSWORD_FILE" ] || handle_error "Password file not found at $PASSWORD_FILE"
+[ -f "$COMPOSE_FILE" ] || handle_error "Docker compose file not found at $COMPOSE_FILE"
+[ -d "$SOURCE_DIR" ] || handle_error "Source directory $SOURCE_DIR does not exist"
+[ -d "$BACKUP_DIR" ] || handle_error "Backup directory $BACKUP_DIR does not exist"
+[ -f "$MSMTP_CONFIG" ] || handle_error "msmtp config not found at $MSMTP_CONFIG"
 
-if [ ! -f "$COMPOSE_FILE" ]; then
-    handle_error "Docker compose file not found at $COMPOSE_FILE"
-fi
-
-if [ ! -d "$SOURCE_DIR" ]; then
-    handle_error "Source directory $SOURCE_DIR does not exist"
-fi
-
-if [ ! -d "$BACKUP_DIR" ]; then
-	handle_error "Backup directory $BACKUP_DIR does not exist"
-fi
-
-if [ ! -f "$MSMTP_CONFIG" ]; then
-	handle_error "msmtp configuration file not found at $MSMTP_CONFIG. Please create it for email notifications."
-fi
-
-BACKUP_PASSWORD=$(cat "$PASSWORD_FILE")
 log "Starting backup"
 cd "$(dirname "$COMPOSE_FILE")"
 
 log "Saving current container states"
 docker compose ps > /tmp/docker-states-before-backup.txt
 
-log "Stopping all Docker containers via compose"
-if ! docker compose down; then
-	handle_error "Failed to stop Docker containers via compose."
+ALL_SERVICES="$(docker compose ps --services)"
+
+EXCLUDE_SERVICES=()
+if [ -f "$EXCLUDE_FILE" ]; then
+    log "Reading container exclusion list from $EXCLUDE_FILE"
+    mapfile -t EXCLUDE_SERVICES < <(grep -v '^#' "$EXCLUDE_FILE" | grep -v '^[[:space:]]*$')
+    log "Containers to keep running: ${EXCLUDE_SERVICES[*]}"
+else
+    log "No exclusion file found at $EXCLUDE_FILE - all containers will be stopped"
 fi
 
-log "Creating tar archive"
+STOP_SERVICES=()
+for service in $ALL_SERVICES; do
+    if printf '%s\n' "${EXCLUDE_SERVICES[@]}" | grep -qx "$service"; then
+        log "Excluding $service from shutdown"
+    else
+        STOP_SERVICES+=("$service")
+    fi
+done
+
+if [ "${#STOP_SERVICES[@]}" -gt 0 ]; then
+    log "Stopping containers: ${STOP_SERVICES[*]}"
+    docker compose stop "${STOP_SERVICES[@]}" || handle_error "Failed to stop Docker containers"
+else
+    log "No containers to stop - all are excluded"
+fi
+
+log "Creating tar archive of source directory"
 if tar -cf "$BACKUP_TAR" -C "$(dirname "$SOURCE_DIR")" "$(basename "$SOURCE_DIR")"; then
     log "Tar archive created: $BACKUP_TAR"
 else
@@ -125,27 +142,28 @@ fi
 log "Creating password-protected 7z archive"
 if 7z a -p"$BACKUP_PASSWORD" -mhe=on "$BACKUP_FILE" "$BACKUP_TAR" >/dev/null; then
     log "7z archive created successfully: $BACKUP_FILE"
-    log "Backup size: $(du -h "$BACKUP_FILE" | cut -f1)"
+    BACKUP_SIZE=$(du -sh "$BACKUP_FILE" | awk '{print $1}')
+    log "Backup size: $BACKUP_SIZE"
     chown "$SYNCTHING_USER:$SYNCTHING_GROUP" "$BACKUP_FILE"
     chmod 640 "$BACKUP_FILE"
     rm -f "$BACKUP_TAR"
 else
-	rm -f "$BACKUP_TAR" "$BACKUP_FILE"
+    rm -f "$BACKUP_TAR" "$BACKUP_FILE"
     docker compose up -d
     handle_error "Failed to create 7z archive"
- fi
+fi
 
 log "Verifying backup contents against source directory"
-TMP_VERIFY_DIR=$(mktemp -d)
-TMP_EXTRACT_DIR=$(mktemp -d)
+TMP_VERIFY_DIR=$(mktemp -d -t docker-backup-XXXX)
+TMP_EXTRACT_DIR=$(mktemp -d -t docker-backup-XXXX)
 if 7z x -p"$BACKUP_PASSWORD" -o"$TMP_VERIFY_DIR" "$BACKUP_FILE" >/dev/null 2>&1; then
     TAR_FILE="$TMP_VERIFY_DIR/$(basename "$BACKUP_TAR")"
     if tar -xf "$TAR_FILE" -C "$TMP_EXTRACT_DIR"; then
-        if diff_output=$(diff -r "$SOURCE_DIR" "$TMP_EXTRACT_DIR/$(basename "$SOURCE_DIR")"); then
+        if diff -r "$SOURCE_DIR" "$TMP_EXTRACT_DIR/$(basename "$SOURCE_DIR")" >/dev/null 2>&1; then
             log "Backup contents match source directory"
         else
-            log "WARNING: Backup contents differ from source directory. Differences:"
-            echo "$diff_output" | tee -a "$LOG_FILE"
+            log "WARNING: Backup contents differ from source directory:"
+            diff -r "$SOURCE_DIR" "$TMP_EXTRACT_DIR/$(basename "$SOURCE_DIR")" | tee -a "$LOG_FILE"
         fi
     else
         log "WARNING: Failed to extract tar archive for content verification"
@@ -155,18 +173,13 @@ else
 fi
 rm -rf "$TMP_VERIFY_DIR" "$TMP_EXTRACT_DIR"
 
+log "Restarting all Docker containers"
+docker compose up -d || handle_error "Failed to restart Docker containers"
 
-log "Restarting all Docker containers via compose"
-if ! docker compose up -d; then
-	handle_error "Failed to restart Docker containers via compose"
-fi
-
-log "Checking if syncthing container is running"
-if docker compose ps | grep -q syncthing && docker compose ps syncthing | grep -q "Up"; then
+if [ "$(docker ps --filter "name=^syncthing$" --filter "status=running" -q)" ]; then
     log "Syncthing container is running - backups will be synced"
 else
     log "WARNING: Syncthing container may not be running properly"
-    docker compose ps | grep syncthing || log "No syncthing service found in compose file"
 fi
 
 log "Cleaning up backups older than $RETENTION_DAYS days"
