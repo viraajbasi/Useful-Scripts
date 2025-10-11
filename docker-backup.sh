@@ -135,7 +135,7 @@ log "Creating tar archive of source directory"
 if tar -cf "$BACKUP_TAR" -C "$(dirname "$SOURCE_DIR")" "$(basename "$SOURCE_DIR")"; then
     log "Tar archive created: $BACKUP_TAR"
 else
-    docker compose up -d
+    docker compose -f $COMPOSE_FILE up -d
     handle_error "Failed to create tar archive"
 fi
 
@@ -149,7 +149,7 @@ if 7z a -p"$BACKUP_PASSWORD" -mhe=on "$BACKUP_FILE" "$BACKUP_TAR" >/dev/null; th
     rm -f "$BACKUP_TAR"
 else
     rm -f "$BACKUP_TAR" "$BACKUP_FILE"
-    docker compose up -d
+    docker compose -f $COMPOSE_FILE up -d
     handle_error "Failed to create 7z archive"
 fi
 
@@ -174,7 +174,7 @@ fi
 rm -rf "$TMP_VERIFY_DIR" "$TMP_EXTRACT_DIR"
 
 log "Restarting all Docker containers"
-docker compose up -d || handle_error "Failed to restart Docker containers"
+docker compose -f $COMPOSE_FILE up -d || handle_error "Failed to restart Docker containers"
 
 if [ "$(docker ps --filter "name=^syncthing$" --filter "status=running" -q)" ]; then
     log "Syncthing container is running - backups will be synced"
