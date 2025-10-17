@@ -155,23 +155,24 @@ fi
 
 log "Verifying backup contents against source directory"
 TMP_VERIFY_DIR=$(mktemp -d -t docker-backup-XXXX)
-TMP_EXTRACT_DIR=$(mktemp -d -t docker-backup-XXXX)
+
 if 7z x -p"$BACKUP_PASSWORD" -o"$TMP_VERIFY_DIR" "$BACKUP_FILE" >/dev/null 2>&1; then
     TAR_FILE="$TMP_VERIFY_DIR/$(basename "$BACKUP_TAR")"
-    if tar -xf "$TAR_FILE" -C "$TMP_EXTRACT_DIR"; then
-        if diff -r "$SOURCE_DIR" "$TMP_EXTRACT_DIR/$(basename "$SOURCE_DIR")" >/dev/null 2>&1; then
-            log "Backup contents match source directory"
+    if [ -f "$TAR_FILE" ]; then
+        if tar -C "$(dirname "$SOURCE_DIR")" -df "$TAR_FILE" "$(basename "$SOURCE_DIR")" >/dev/null 2>&1; then
+            log "Backup contents match source directory (tar --compare)"
         else
-            log "WARNING: Backup contents differ from source directory:"
-            diff -r "$SOURCE_DIR" "$TMP_EXTRACT_DIR/$(basename "$SOURCE_DIR")" | tee -a "$LOG_FILE"
+            log "WARNING: Backup contents differ from source directory (tar --compare):"
+            tar -C "$(dirname "$SOURCE_DIR")" -df "$TAR_FILE" "$(basename "$SOURCE_DIR")" | tee -a "$LOG_FILE"
         fi
     else
-        log "WARNING: Failed to extract tar archive for content verification"
+        log "WARNING: Expected tar file not found inside 7z archive: $TAR_FILE"
     fi
 else
     log "WARNING: Failed to extract 7z archive for content verification"
 fi
-rm -rf "$TMP_VERIFY_DIR" "$TMP_EXTRACT_DIR"
+
+rm -rf "$TMP_VERIFY_DIR"
 
 log "Restarting all Docker containers"
 docker compose -f $COMPOSE_FILE up -d || handle_error "Failed to restart Docker containers"
