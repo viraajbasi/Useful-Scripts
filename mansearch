@@ -1,0 +1,13 @@
+#!/bin/bash
+
+DMENU_CMD="fuzzel -d"
+
+PAGES=$(man -k . 2>/dev/null | awk '{print $1}' | sort -u)
+CHOICE=$(printf '%s\n' "${PAGES[@]}" | ${DMENU_CMD} "$@")
+
+if [ "${CHOICE}" ]; then
+    PAGE=$(printf '%s\n' "${CHOICE}" | awk '{print $1}')
+    exec xdg-terminal-exec man "${PAGE}"
+else
+    printf "Program Terminated\n"
+fi
