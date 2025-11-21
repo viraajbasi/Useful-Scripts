@@ -1,0 +1,24 @@
+#!/bin/bash
+
+DMENU_CMD="fuzzel -d"
+ZED_CMD="zeditor"
+START_DIR="${1:-$HOME}"
+
+if ! command -v $DMENU_CMD &> /dev/null; then
+    echo "Could not find dmenu-compatible launcher."
+    exit 1
+fi
+
+if ! command -v $ZED_CMD &> /dev/null; then
+    echo "Could not find Zed."
+    exit 1
+fi
+
+SELECTION=$(find "$START_DIR" -type d 2> /dev/null | $DMENU_CMD)
+
+if [ -z "$SELECTION" ]; then
+    echo "No selection made."
+    exit 0
+fi
+
+$ZED_CMD "$SELECTION"
