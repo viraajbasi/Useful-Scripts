@@ -1,26 +1,26 @@
 #!/bin/sh
 
 update_repos() {
-	for dir in $(find "${1}" -mindepth 1 -maxdepth 1 -type d); do
-		if [ -d "${dir}" ]; then
-			printf "Checking directory: %s\n" "${dir}"
-			if [ -d "${dir}/.git" ]; then
-				printf "Pulling latest changes in %s...\n" "${dir}"
-				cd "${dir}" || continue
-				git pull
-				cd - > /dev/null || exit
-			else
-				printf "%s is not a git repository, skipping.\n" "${dir}"
-			fi
-		fi
-	done
-	printf "Update Process Completed.\n"
+    for dir in $(find "${1}" -mindepth 1 -maxdepth 1 -type d); do
+        if [ -d "${dir}" ]; then
+            printf "Checking directory: %s\n" "${dir}"
+            if [ -d "${dir}/.git" ]; then
+                printf "Pulling latest changes in %s...\n" "${dir}"
+                cd "${dir}" || continue
+                git pull
+                cd - > /dev/null || exit
+            else
+                printf "%s is not a git repository, skipping.\n" "${dir}"
+            fi
+        fi
+    done
+    printf "Update Process Completed.\n"
 }
 
 if [ -d "${1}" ]; then
-	update_repos "${1}"
-	exit 0
+    update_repos "${1}"
+    exit 0
 else
-	printf "Usage:\n\tupdate-repos </path/to/directory>\n"
-	exit 1
+    printf "Usage:\n\tupdate-repos </path/to/directory>\n"
+    exit 1
 fi

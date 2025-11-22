@@ -7,9 +7,9 @@
 
 LOCATION=""
 if [ -n "${WEATHER_LOCATION}" ]; then
-	LOCATION="${WEATHER_LOCATION}"
+    LOCATION="${WEATHER_LOCATION}"
 else
-	LOCATION="${1}"
+    LOCATION="${1}"
 fi
 
 TEXT=$(curl -s "wttr.in/${LOCATION}?format=1")

@@ -4,28 +4,28 @@
 FILE="$(xdg-user-dir PICTURES)/screenshots/$(date +%Y-%m-%d_%H-%m-%s).png"
 
 help_text() {
-	if [ -n "${1}" ]; then
-		error="${1}"
-		printf "Error: %s\n\n" "${1}"
-	fi
+    if [ -n "${1}" ]; then
+        error="${1}"
+        printf "Error: %s\n\n" "${1}"
+    fi
 
-	printf "Description: Take a screenshot using \"grimblast\" and send a notification.\n\nUsage:\n\tscreenshot {region|screen} <command>\n\nCommands:\n\t-h --help\tShow available commands.\n"
+    printf "Description: Take a screenshot using \"grimblast\" and send a notification.\n\nUsage:\n\tscreenshot {region|screen} <command>\n\nCommands:\n\t-h --help\tShow available commands.\n"
 }
 
 if [ "${1}" = "region" ]; then
-	grimblast --freeze copysave area "${FILE}" \
-		&& notify-send -i screenshooter-symbolic "Screenshot" "Screenshot taken! It has been saved to '${FILE}' and copied to the clipboard." \
-		|| notify-send -u critical -i error "Screenshot" "Screenshot failed!"
-	exit 0
+    grimblast --freeze copysave area "${FILE}" \
+        && notify-send -i screenshooter-symbolic "Screenshot" "Screenshot taken! It has been saved to '${FILE}' and copied to the clipboard." \
+        || notify-send -u critical -i error "Screenshot" "Screenshot failed!"
+    exit 0
 elif [ "${1}" = "screen" ]; then
-	grimblast copysave screen "${FILE}" \
-		&& notify-send -i screenshooter-symbolic "Screenshot" "Screenshot taken! It has been saved to '${FILE}' and copied to the clipboard." \
-		|| notify-send -u critical -i error "Screenshot" "Screenshot failed!"
-	exit 0
+    grimblast copysave screen "${FILE}" \
+        && notify-send -i screenshooter-symbolic "Screenshot" "Screenshot taken! It has been saved to '${FILE}' and copied to the clipboard." \
+        || notify-send -u critical -i error "Screenshot" "Screenshot failed!"
+    exit 0
 elif [ "${1}" = "-h" ] || [ "${1}" = "--help" ]; then
-	help_text
-	exit 0
+    help_text
+    exit 0
 else
-	help_text "Unknown command"
-	exit 1
+    help_text "Unknown command"
+    exit 1
 fi
