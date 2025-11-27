@@ -1,12 +1,13 @@
 #!/bin/sh
 
-VPN_STATUS="$(systemctl is-active wg-quick@pvpn.service)"
+CONF_FILE="vpn"
+VPN_STATUS="$(systemctl is-active wg-quick@${CONF_FILE}.service)"
 if [ "${VPN_STATUS}" = "active" ]; then
-    systemctl stop wg-quick@pvpn.service \
-        && notify-send -i network-vpn-disconnected "VPN Status" "Successfully disconnected from ProtonVPN" \
-        || notify-send -u critical -i error "VPN Status" "Failed to disconnect from ProtonVPN"
+    systemctl stop wg-quick@${CONF_FILE}.service \
+        && notify-send -i network-vpn-disconnected-symbolic "VPN Status" "Successfully disconnected from VPN." \
+        || notify-send -u critical -i error "VPN Status" "Failed to disconnect from VPN."
 elif [ "${VPN_STATUS}" = "inactive" ]; then
-    systemctl start wg-quick@pvpn.service \
-        && notify-send -i network-vpn "VPN Status" "Successfully connected to ProtonVPN" \
-        || notify-send -u critical -i error "VPN Status" "Failed to connect to ProtonVPN"
+    systemctl start wg-quick@${CONF_FILE}.service \
+        && notify-send -i network-vpn-symbolic "VPN Status" "Successfully connected to VPN" \
+        || notify-send -u critical -i error "VPN Status" "Failed to connect to VPN"
 fi
