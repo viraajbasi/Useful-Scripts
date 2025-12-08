@@ -1,0 +1,20 @@
+#!/bin/sh
+
+PIDFILE=$(find /tmp -maxdepth 1 -name "gpu-screen-recorder-*.pid" 2>/dev/null | head -n 1)
+
+if [ -n "${PIDFILE}" ] && [ -f "${PIDFILE}" ]; then
+    PID=$(cat "${PIDFILE}")
+    if ps -p $PID &>/dev/null; then
+        TEXT="󰑊"
+        TOOLTIP="Recording in progress (PID: ${PID})"
+    else
+        rm "${PIDFILE}"
+        TEXT="󰻃"
+        TOOLTIP="Not recording"
+    fi
+else
+    TEXT="󰻃"
+    TOOLTIP="Not recording"
+fi
+
+printf '{"text":"%s", "tooltip":"%s"}\n' "${TEXT}" "${TOOLTIP}"
