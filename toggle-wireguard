@@ -1,4 +1,10 @@
 #!/bin/sh
+# Requires `wg-quick`
+
+if ! command -v wg-quick &> /dev/null; then
+    echo "\"wg-quick\" is not installed."
+    exit 1
+fi
 
 CONF_FILE="vpn"
 VPN_STATUS="$(systemctl is-active wg-quick@${CONF_FILE}.service)"

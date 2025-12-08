@@ -1,9 +1,10 @@
 #!/bin/sh
+# Require `curl`
 
-##########################
-## === Dependencies === ##
-## curl                 ##
-##########################
+if ! command -v curl &> /dev/null; then
+    echo "\"curl\" is not installed."
+    exit 1
+fi
 
 LOCATION=""
 if [ -n "${WEATHER_LOCATION}" ]; then

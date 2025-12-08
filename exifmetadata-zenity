@@ -1,4 +1,16 @@
 #!/bin/sh
+# Requires `exiftool`
+# Requires `zenity`
+
+if ! command -v exiftool &> /dev/null; then
+    echo "\"exiftool\" is not installed."
+    exit 1
+fi
+
+if ! command -v zenity &> /dev/null; then
+    echo "\"zenity\" is not installed."
+    exit 1
+fi
 
 if [ -z "${@}" ] || [ ! -f "${@}" ]; then
     echo "Specify a file."

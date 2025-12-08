@@ -1,4 +1,10 @@
 #!/bin/sh
+# Requires `git`
+
+if ! command -v git &> /dev/null; then
+    echo "\"git\" is not installed."
+    exit 1
+fi
 
 update_repos() {
     for dir in $(find "${1}" -mindepth 1 -maxdepth 1 -type d); do

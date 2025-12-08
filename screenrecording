@@ -1,6 +1,11 @@
 #!/bin/sh
 # Requires "gpu-screen-recorder"
 
+if ! command -v gpu-screen-recorder &> /dev/null; then
+    echo "\"gpu-screen-recorder\" is not installed"
+    exit 1
+fi
+
 FILE="$(xdg-user-dir VIDEOS)/recordings/$(date +%Y-%m-%d_%H-%m-%s).mp4"
 MONITOR="DP-1"
 

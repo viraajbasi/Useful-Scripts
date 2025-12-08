@@ -1,4 +1,10 @@
 #!/bin/sh
+# Requires `gamescope`
+
+if ! command -v gamescope &> /dev/null; then
+    echo "\"gamescope\" is not installed."
+    exit 1
+fi
 
 APPLICATION_NAME="$(basename "${0}")"
 

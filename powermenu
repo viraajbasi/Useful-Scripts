@@ -1,6 +1,12 @@
 #!/bin/sh
+# Requires `fuzzel`
 
 DMENU_CMD="fuzzel -d"
+
+if ! command -v $DMENU_CMD &> /dev/null; then
+    echo "Could not find dmenu-compatible launcher."
+    exit 1
+fi
 
 case $(printf "󱅞 Lock\n󰶐 Turn Off Monitors\n󰷛 Lock and Turn Off Monitors\n󰩈 Log Out\n󰒲 Suspend\n Reboot\n󰑥 Soft Reboot\n Reboot into UEFI\n Reboot into Windows\n󰐥 Shutdown" | ${DMENU_CMD}) in
     "󱅞 Lock")

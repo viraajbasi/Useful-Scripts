@@ -1,6 +1,11 @@
 #!/bin/sh
-
 # Requires "grimblast"
+
+if ! grimblast check &> /dev/null; then
+    echo "\"grimblast\" is missing dependencies"
+    exit 1
+fi
+
 FILE="$(xdg-user-dir PICTURES)/screenshots/$(date +%Y-%m-%d_%H-%m-%s).png"
 
 help_text() {
