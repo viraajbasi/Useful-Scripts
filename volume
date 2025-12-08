@@ -1,7 +1,7 @@
 #!/bin/bash
 # Requires `wpctl`
 
-if ! command -v wpctl &> /dev/null; then
+if ! command -v wpctl > /dev/null; then
     echo "\"wpctl\" is not installed."
     exit 1
 fi

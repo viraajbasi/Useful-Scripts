@@ -4,7 +4,7 @@ DMENU_CMD="fuzzel -d"
 ZED_CMD="zeditor"
 START_DIR="${1:-$HOME}"
 
-if ! command -v $DMENU_CMD &> /dev/null; then
+if ! command -v $DMENU_CMD > /dev/null; then
     echo "Could not find dmenu-compatible launcher."
     exit 1
 fi

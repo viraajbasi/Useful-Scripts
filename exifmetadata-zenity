@@ -2,7 +2,7 @@
 # Requires `exiftool`
 # Requires `zenity`
 
-if ! command -v exiftool &> /dev/null; then
+if ! command -v exiftool > /dev/null; then
     echo "\"exiftool\" is not installed."
     exit 1
 fi

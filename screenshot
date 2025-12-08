@@ -1,7 +1,7 @@
 #!/bin/sh
 # Requires "grimblast"
 
-if ! grimblast check &> /dev/null; then
+if ! grimblast check > /dev/null; then
     echo "\"grimblast\" is missing dependencies"
     exit 1
 fi

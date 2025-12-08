@@ -1,7 +1,7 @@
 #!/bin/bash
 # Requires `man`
 
-if ! command -v man &> /dev/null; then
+if ! command -v man > /dev/null; then
     echo "\"man\" man is not installed"
     exit 1
 fi

@@ -1,7 +1,7 @@
 #!/bin/sh
 # Requires `wg-quick`
 
-if ! command -v wg-quick &> /dev/null; then
+if ! command -v wg-quick > /dev/null; then
     echo "\"wg-quick\" is not installed."
     exit 1
 fi

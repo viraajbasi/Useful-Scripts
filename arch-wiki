@@ -2,7 +2,7 @@
 # Requires `arch-wiki-docs`
 # Requires `fuzzel`
 
-if ! command -v $DMENU_CMD &> /dev/null; then
+if ! command -v $DMENU_CMD > /dev/null; then
     echo "Could not find dmenu-compatible launcher."
     exit 1
 fi
