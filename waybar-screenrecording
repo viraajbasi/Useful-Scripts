@@ -4,7 +4,7 @@ PIDFILE=$(find /tmp -maxdepth 1 -name "gpu-screen-recorder-*.pid" 2>/dev/null | 
 
 if [ -n "${PIDFILE}" ] && [ -f "${PIDFILE}" ]; then
     PID=$(cat "${PIDFILE}")
-    if ps -p $PID &>/dev/null; then
+    if ps -p ${PID} > /dev/null; then
         TEXT="󰑊"
         TOOLTIP="Recording in progress (PID: ${PID})"
     else
