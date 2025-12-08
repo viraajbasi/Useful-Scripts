@@ -1,0 +1,82 @@
+#!/bin/sh
+# Requires "gpu-screen-recorder"
+
+FILE="$(xdg-user-dir VIDEOS)/recordings/$(date +%Y-%m-%d_%H-%m-%s).mp4"
+MONITOR="DP-1"
+
+help_text() {
+    if [ -n "${1}" ]; then
+        error="${1}"
+        printf "Error: %s\n\n" "${1}"
+    fi
+    printf "Description: Record screen using \"gpu-screen-recorder\".\n\nUsage:\n\tscreenrecordings {start|stop|toggle}\n\nCommands:\n\tstart\t\tStart recording\n\tstop\t\tStop recording\n\ttoggle\t\tToggle recording on/off\n\t-h --help\tShow available commands\n"
+}
+
+get_pidfile() {
+    find /tmp -maxdepth 1 -name "gpu-screen-recorder-*.pid" 2>/dev/null | head -n 1
+}
+
+start_recording() {
+    EXISTING_PIDFILE="$(get_pidfile)"
+
+    if [ -n "${EXISTING_PIDFILE}" ] && [ -f "${EXISTING_PIDFILE}" ]; then
+        notify-send -i media-record "Screen Recording" "A screen recording is already in progress."
+        exit 1
+    fi
+
+    gpu-screen-recorder -w "${MONITOR}" -f 60 -a default_output -o "${FILE}" &
+    
+    PID=$!
+
+    PIDFILE="$(mktemp -t gpu-screen-recorder-XXXX.pid)"
+    printf "%s" "${PID}" > "${PIDFILE}"
+
+    notify-send -i media-record "Screen Recording" "Screen recording started. It will be saved to ${FILE}."
+}
+
+stop_recording() {
+    PIDFILE="$(get_pidfile)"
+
+    if [ -z "${PIDFILE}" ] || [ ! -f "${PIDFILE}" ]; then
+        notify-send -u critical -i error "Screen Recording" "No screen recording is in progress."
+        exit 1
+    fi
+
+    PID="$(cat ${PIDFILE})"
+
+    if kill -INT "${PID}" 2> /dev/null; then
+        rm "${PIDFILE}"
+        notify-send -i media-playback-stop "Screen Recording" "Screen recording stopped."
+    else
+        rm "${PIDFILE}"
+        notify-send -u critical -i error "Screen Recording" "Failed to stop screen recording."
+        exit 1
+    fi
+}
+
+toggle_recording() {
+    EXISTING_PIDFILE="$(get_pidfile)"
+
+    if [ -n "${EXISTING_PIDFILE}" ] && [ -f "${EXISTING_PIDFILE}" ]; then
+        stop_recording
+    else
+        start_recording
+    fi
+}
+
+if [ "${1}" = "start" ]; then
+    start_recording
+    exit 0
+elif [ "${1}" = "stop" ]; then
+    stop_recording
+    exit 0
+elif [ "${1}" = "toggle" ]; then
+    toggle_recording
+    exit 0
+elif [ "${1}" = "-h" ] || [ "${1}" = "--help" ]; then
+    help_text
+    exit 0
+else
+    help_text "Unknown command"
+    exit 1
+fi
