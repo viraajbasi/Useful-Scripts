@@ -9,11 +9,16 @@ help_text() {
         printf "Error: %s\n\n" "${1}"
     fi
 
-    printf "Description: Take a screenshot using \"grimblast\" and send a notification.\n\nUsage:\n\tscreenshot {region|screen} <command>\n\nCommands:\n\t-h --help\tShow available commands.\n"
+    printf "Description: Take a screenshot using \"grimblast\" and send a notification.\n\nUsage:\n\tscreenshot {region|output|screen} <command>\n\nCommands:\n\t-h --help\tShow available commands.\n"
 }
 
 if [ "${1}" = "region" ]; then
     grimblast --freeze copysave area "${FILE}" \
+        && notify-send -i screenshooter-symbolic "Screenshot" "Screenshot taken! It has been saved to '${FILE}' and copied to the clipboard." \
+        || notify-send -u critical -i error "Screenshot" "Screenshot failed!"
+    exit 0
+elif [ "${1}" = "output" ]; then
+    grimblast --freeze copysave output "${FILE}" \
         && notify-send -i screenshooter-symbolic "Screenshot" "Screenshot taken! It has been saved to '${FILE}' and copied to the clipboard." \
         || notify-send -u critical -i error "Screenshot" "Screenshot failed!"
     exit 0
