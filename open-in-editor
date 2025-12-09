@@ -1,7 +1,7 @@
 #!/bin/bash
 
 DMENU_CMD="fuzzel -d"
-ZED_CMD="zeditor"
+EDITOR_CMD="code"
 START_DIR="${1:-$HOME}"
 
 if ! command -v $DMENU_CMD > /dev/null; then
@@ -9,7 +9,7 @@ if ! command -v $DMENU_CMD > /dev/null; then
     exit 1
 fi
 
-if ! command -v $ZED_CMD &> /dev/null; then
+if ! command -v $EDITOR_CMD &> /dev/null; then
     echo "Could not find Zed."
     exit 1
 fi
@@ -21,4 +21,4 @@ if [ -z "$SELECTION" ]; then
     exit 0
 fi
 
-$ZED_CMD "$SELECTION"
+$EDITOR_CMD "$SELECTION"
