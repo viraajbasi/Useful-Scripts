@@ -1,0 +1,90 @@
+#!/bin/bash
+# Requires ddcutil
+
+if ! command -v ddcutil > /dev/null; then
+    echo "Error: ddcutil is not installed." >&2
+    exit 1
+fi
+
+STEP=10
+BASE_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/ddc"
+PIPE="$BASE_DIR/brightness.pipe"
+STATUS_FILE="$BASE_DIR/monitors.status"
+VAL_FILE="$BASE_DIR/monitors.status.val"
+
+declare -A BUS_CACHE
+declare -A BRIGHTNESS_CACHE
+
+cleanup() {
+    rm -rf "$BASE_DIR"
+    exit 0
+}
+
+# Trap signals and close the pipe on exit
+trap cleanup SIGINT SIGTERM EXIT
+
+check_permissions() {
+    if ! ls /dev/i2c-* > /dev/null 2>&1; then
+        echo "Error: /dev/i2c-* not found." >&2
+        exit 1
+    fi
+}
+
+initialize_buses() {
+    local raw_output=$(ddcutil detect 2>/dev/null)
+    BUS_CACHE=(); BRIGHTNESS_CACHE=()
+    local bus="" drm=""
+    while read -r line; do
+        [[ "$line" =~ I2C.bus: ]] && bus=$(echo "$line" | grep -oP 'i2c-\K[0-9]+')
+        [[ "$line" =~ DRM.connector: ]] && drm=$(echo "$line" | awk '{print $NF}' | sed 's/^card[0-9]-//')
+        if [ -n "$bus" ] && [ -n "$drm" ]; then
+            BUS_CACHE["$drm"]="$bus"
+            BRIGHTNESS_CACHE["$drm"]=$(get_brightness "$drm")
+            echo "Init: $drm [${BRIGHTNESS_CACHE[$drm]}%]"
+            bus=""; drm=""
+        fi
+    done <<< "$raw_output"
+    echo "${!BUS_CACHE[@]}" > "$STATUS_FILE"
+}
+
+get_brightness() {
+    local bus="${BUS_CACHE[$1]:-}"
+    [ -n "$bus" ] && ddcutil --bus="$bus" getvcp 10 --brief 2>/dev/null | awk '{print $4}' || echo "50"
+}
+
+set_brightness() {
+    local bus="${BUS_CACHE[$1]:-}"
+    # Use & to background the task, but we don't need to track PIDs for exit
+    [ -n "$bus" ] && ddcutil --noverify --sleep-multiplier=0.1 --bus="$bus" setvcp 10 "$2" &
+}
+
+check_permissions
+mkdir -p "$BASE_DIR"
+rm -f "$PIPE" "$STATUS_FILE" "$VAL_FILE"
+mkfifo "$PIPE"
+
+initialize_buses
+echo "Daemon ready"
+
+# Use a file descriptor to prevent 'read' from blocking the trap
+exec 3<> "$PIPE"
+
+while read -r drm cmd val <&3; do
+    [ "$drm" == "REFRESH" ] && { initialize_buses; continue; }
+    [ -z "${BUS_CACHE[$drm]:-}" ] && continue
+
+    case "$cmd" in
+        up)   new=$(( BRIGHTNESS_CACHE["$drm"] + STEP )); [ "$new" -gt 100 ] && new=100 ;;
+        down) new=$(( BRIGHTNESS_CACHE["$drm"] - STEP )); [ "$new" -lt 0 ] && new=0 ;;
+        set)  new=$val ;;
+        *)    continue ;;
+    esac
+
+    BRIGHTNESS_CACHE["$drm"]=$new
+    echo "Command: $drm $cmd -> [$new%]"
+    set_brightness "$drm" "$new"
+    
+    status_str=""
+    for m in "${!BUS_CACHE[@]}"; do status_str+="$m: ${BRIGHTNESS_CACHE[$m]}% "; done
+    echo "$status_str" > "$VAL_FILE"
+done

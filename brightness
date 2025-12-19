@@ -1,0 +1,58 @@
+#!/bin/sh
+
+BASE_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/ddc"
+PIPE="$BASE_DIR/brightness.pipe"
+STATUS_FILE="$BASE_DIR/monitors.status"
+VAL_FILE="$BASE_DIR/monitors.status.val"
+
+# Check for daemon
+if [ ! -p "$PIPE" ]; then
+    msg="Brightness Daemon is not running."
+    echo "Error: $msg" >&2
+    if command -v notify-send >/dev/null; then
+        notify-send -u critical -i "dialog-error" "Brightness Error" "$msg"
+    fi
+    exit 1
+fi
+
+get_monitors() { cat "$STATUS_FILE" 2>/dev/null; }
+
+notify_all() {
+    status_text=$(cat "$VAL_FILE" 2>/dev/null)
+    [ -z "$status_text" ] && status_text=$(get_monitors)
+    notify-send -t 2000 -i "display-brightness-symbolic" "Display Status" "$status_text"
+}
+
+case "$1" in
+    -h|--help|"") printf "Usage: brightness {id|--all|--refresh} <cmd>\n"; exit 0 ;;
+    -r|--refresh) echo "REFRESH x x" > "$PIPE"; exit 0 ;;
+    -a|--all|-n|--notify) notify_all; exit 0 ;;
+esac
+
+DEVICE="$1"
+VALID_MONITORS=$(get_monitors)
+
+case " $VALID_MONITORS " in
+    *" $DEVICE "*) ;;
+    *) echo "Error: $DEVICE not found."; exit 1 ;;
+esac
+
+case "$2" in
+    -i|--inc) 
+        echo "$DEVICE up" > "$PIPE"
+        notify_all
+        ;;
+    -d|--dec) 
+        echo "$DEVICE down" > "$PIPE"
+        notify_all
+        ;;
+    -s|--set) 
+        if [ -n "$3" ]; then
+            echo "$DEVICE set $3" > "$PIPE"
+            notify_all
+        else
+            exit 1
+        fi
+        ;;
+    *) exit 1 ;;
+esac
