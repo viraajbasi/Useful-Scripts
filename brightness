@@ -20,7 +20,7 @@ get_monitors() { cat "$STATUS_FILE" 2>/dev/null; }
 notify_all() {
     status_text=$(cat "$VAL_FILE" 2>/dev/null)
     [ -z "$status_text" ] && status_text=$(get_monitors)
-    notify-send -t 2000 -i "display-brightness-symbolic" "Display Status" "$status_text"
+    notify-send -t 2000 -e -h string:x-canonical-private-synchronous:brightness -i "display-brightness-symbolic" "Display Status" "$status_text"
 }
 
 case "$1" in
