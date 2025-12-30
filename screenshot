@@ -1,5 +1,4 @@
 #!/bin/sh
-# Requires "grimblast"
 
 checkdeps() {
     for cmd in "${@}"; do

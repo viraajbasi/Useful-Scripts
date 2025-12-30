@@ -1,7 +1,4 @@
-#!/bin/bash
-# Requires `man`
-# Requires `fuzzel`
-# Requires `xdg-terminal-exec`
+#!/usr/bin/env bash
 
 LAUNCHER_CMD="fuzzel"
 LAUNCHER_OPTS="-d"

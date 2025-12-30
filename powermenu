@@ -1,7 +1,4 @@
 #!/bin/sh
-# Requires `fuzzel`
-
-DMENU_CMD="fuzzel -d"
 
 LAUNCHER_CMD="fuzzel"
 LAUNCHER_OPTS="-d"

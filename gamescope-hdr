@@ -1,5 +1,4 @@
 #!/bin/sh
-# Requires `gamescope`
 
 checkdeps() {
     for cmd in "${@}"; do

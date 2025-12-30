@@ -1,6 +1,4 @@
-#!/bin/bash
-# Requires `exiftool`
-# Requires `kdialog`
+#!/usr/bin/env bash
 
 checkdeps() {
     for cmd in "${@}"; do

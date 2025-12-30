@@ -1,5 +1,4 @@
 #!/bin/sh
-# Require `curl`
 
 checkdeps() {
     for cmd in "${@}"; do

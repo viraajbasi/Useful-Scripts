@@ -1,5 +1,4 @@
 #!/bin/sh
-# Requires `wg-quick`
 
 checkdeps() {
     for cmd in "${@}"; do

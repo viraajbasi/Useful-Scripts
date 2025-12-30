@@ -1,5 +1,4 @@
 #!/bin/sh
-# Requires "gpu-screen-recorder"
 
 checkdeps() {
     for cmd in "${@}"; do

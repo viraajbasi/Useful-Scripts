@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 format_failed_units() {
     if [ -n "${1}" ]; then
