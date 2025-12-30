@@ -1,10 +1,4 @@
 #!/bin/bash
-# Requires ddcutil
-
-if ! command -v ddcutil > /dev/null; then
-    echo "Error: ddcutil is not installed." >&2
-    exit 1
-fi
 
 STEP=10
 BASE_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/ddc"
@@ -15,12 +9,27 @@ VAL_FILE="$BASE_DIR/monitors.status.val"
 declare -A BUS_CACHE
 declare -A BRIGHTNESS_CACHE
 
+checkdeps() {
+    for cmd in "${@}"; do
+        if ! command -v "${cmd}" > /dev/null 2>&1; then
+            msg="Could not find: '${cmd}'."
+            echo ${msg} >&2
+            if command -v notify-send > /dev/null 2>&1; then
+                notify-send -u critical -i dialog-error "Missing Dependency" "${msg}"
+            fi
+
+            exit 1
+        fi
+    done
+}
+
+checkdeps ddcutil
+
 cleanup() {
     rm -rf "$BASE_DIR"
     exit 0
 }
 
-# Trap signals and close the pipe on exit
 trap cleanup SIGINT SIGTERM EXIT
 
 check_permissions() {
@@ -54,7 +63,6 @@ get_brightness() {
 
 set_brightness() {
     local bus="${BUS_CACHE[$1]:-}"
-    # Use & to background the task, but we don't need to track PIDs for exit
     [ -n "$bus" ] && ddcutil --noverify --sleep-multiplier=0.1 --bus="$bus" setvcp 10 "$2" &
 }
 

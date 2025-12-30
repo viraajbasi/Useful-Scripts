@@ -1,19 +1,40 @@
 #!/bin/bash
 # Requires `wpctl`
 
-if ! command -v wpctl > /dev/null; then
-    echo "\"wpctl\" is not installed."
-    exit 1
-fi
-
 STEP=1
 
-get_volume() {
+checkdeps() {
+    for cmd in "${@}"; do
+        if ! command -v "${cmd}" > /dev/null 2>&1; then
+            msg="Could not find: '${cmd}'."
+            echo ${msg} >&2
+            if command -v notify-send > /dev/null 2>&1; then
+                notify-send -u critical -i dialog-error "Missing Dependency" "${msg}"
+            fi
+
+            exit 1
+        fi
+    done
+}
+
+fatal() {
+    msg="$1"
+    echo "Runtime Error: $msg" >&2
+    if command -v notify-send >/dev/null 2>&1; then
+        notify-send -u critical -i dialog-error "Runtime Error" "$msg"
+    fi
+
+    exit 1
+}
+
+checkdeps wpctl notify-send
+
+getvol() {
     local volume=$(wpctl get-volume ${DEVICE} | awk '{print substr($2,0,4)}' | tr -d .)
     echo $((10#${volume}))
 }
 
-is_muted() {
+ismuted() {
     local mute_status=$(wpctl get-volume ${DEVICE} | awk '{print $3}')
     if [ "${mute_status}" == "[MUTED]" ]; then
         echo true
@@ -22,53 +43,50 @@ is_muted() {
     fi
 }
 
-get_icon() {
-    if [ "$(get_volume)" -eq "0" ] || [ "$(is_muted)" == "true" ]; then
+geticon() {
+    if [ "$(getvol)" -eq "0" ] || [ "$(ismuted)" == "true" ]; then
         echo ${VOL_MUTE}
-    elif [ "$(get_volume)" -ge "0" ] && [ "$(get_volume)" -le "30" ]; then
+    elif [ "$(getvol)" -ge "0" ] && [ "$(getvol)" -le "30" ]; then
         echo ${VOL_LOW}
-    elif [ "$(get_volume)" -ge "30" ] && [ "$(get_volume)" -le "60" ]; then
+    elif [ "$(getvol)" -ge "30" ] && [ "$(getvol)" -le "60" ]; then
         echo ${VOL_MID}
-    elif [ "$(get_volume)" -ge "60" ] && [ "$(get_volume)" -le "100" ]; then
+    elif [ "$(getvol)" -ge "60" ] && [ "$(getvol)" -le "100" ]; then
         echo ${VOL_HIGH}
     fi
 }
 
-notify_user() {
-    notify-send -t 1000 -e -h int:value:"$(get_volume)" -h string:synchronous:volume -i "$(get_icon)" "Volume" "Volume: $(get_volume)%"
+notify() {
+    notify-send -t 1000 -e -h int:value:"$(getvol)" -h string:synchronous:volume -i "$(geticon)" "Volume" "Volume: $(getvol)%"
 }
 
-help_text() {
-    if [ -n "${1}" ]; then
-        error="${1}"
-        printf "Error: %s\n\n" "${1}"
-    fi
-
-    printf "Description: Control the volume of the default pipewire sink/source.\n\nUsage:\n\tvolume {output|input} <command>\n\nCommands:\n\t-g --get\tGet the volume of the default sink.\n\t-i --inc\tIncrement the volume of the default sink by %s%%.\n\t-d --dec\tDecrement the volume of the default sink by %s%%.\n\t-t --toggle\tToggle mute status of the default sink\n\t-s --set VOL%%\tSet the volume of the default sink to the specified value.\n\t-h --help\tShow available commands.\n" "${STEP}" "${STEP}"
+usage() {
+    printf "Description: Control the volume of the default pipewire sink/source.\n\n"
+    printf "Usage:\n\tvolume {output|input} <command>\n\n"
+    printf "Commands:\n\t-g --get\tGet the volume of the default sink.\n\t-i --inc\tIncrement the volume of the default sink by %s%%.\n\t-d --dec\tDecrement the volume of the default sink by %s%%.\n\t-t --toggle\tToggle mute status of the default sink\n\t-s --set VOL%%\tSet the volume of the default sink to the specified value.\n\t-h --help\tShow available commands.\n" "${STEP}" "${STEP}"
 }
 
-step_volume() {
+stepvol() {
     wpctl set-volume -l 1 ${DEVICE} ${STEP}%${1}
-    notify_user
+    notify
 }
 
-toggle_mute() {
-    if [ "$(is_muted)" == "true" ]; then
+togglemute() {
+    if [ "$(ismuted)" == "true" ]; then
         wpctl set-mute ${DEVICE} 0
-        notify_user
+        notify
     else
         wpctl set-mute ${DEVICE} 1
-        notify_user
+        notify
     fi
 }
 
-set_volume() {
+setvol() {
     if [ -z "${1}" ]; then
-        help_text "Enter the value you would like to change the volume to."
+        fatal "Enter the value you would like to change the volume to."
         exit 1
     else
         wpctl set-volume ${DEVICE} ${1}%
-        notify_user
+        notify
     fi
 }
 
@@ -85,29 +103,33 @@ elif [ "${1}" == "input" ]; then
     declare -g VOL_LOW="microphone-sensitivity-low"
     declare -g VOL_MUTE="microphone-sensitivity-muted"
 else
-    help_text 'The first argument must be either "output" or "input".'
+    usage
+    echo
+    fatal 'The first argument must be either "output" or "input".'
     exit 1
 fi
 
 if [ "${2}" == "-g" ] || [ "${2}" == "--get" ]; then
-    notify_user
+    notify
     exit 0
 elif [ "${2}" == "-i" ] || [ "${2}" == "--inc" ]; then
-    step_volume "+"
+    stepvol "+"
     exit 0
 elif [ "${2}" == "-d" ] || [ "${2}" == "--dec" ]; then
-    step_volume "-"
+    stepvol "-"
     exit 0
 elif [ "${2}" == "-t" ] || [ "${2}" == "--toggle" ]; then
-    toggle_mute
+    togglemute
     exit 0
 elif [ "${2}" == "-s" ] || [ "${2}" == "--set" ]; then
-    set_volume "${3}"
+    setvol "${3}"
     exit 0
 elif [ "${2}" == "-h" ] || [ "${2}" == "--help" ] || [ -z "${2}" ]; then
-    help_text
+    usage
     exit 0
 else
-    help_text "Unkown command."
+    usage
+    echo
+    fatal "Unkown command."
     exit 1
 fi

@@ -3,40 +3,34 @@
 
 DMENU_CMD="fuzzel -d"
 
-if ! command -v $DMENU_CMD > /dev/null; then
-    echo "Could not find dmenu-compatible launcher."
-    exit 1
-fi
+LAUNCHER_CMD="fuzzel"
+LAUNCHER_OPTS="-d"
 
-case $(printf "󱅞 Lock\n󰶐 Turn Off Monitors\n󰷛 Lock and Turn Off Monitors\n󰩈 Log Out\n󰒲 Suspend\n Reboot\n󰑥 Soft Reboot\n Reboot into UEFI\n Reboot into Windows\n󰐥 Shutdown" | ${DMENU_CMD}) in
-    "󱅞 Lock")
-        loginctl lock-session
-        ;;
-    "󰶐 Turn Off Monitors")
-        hyprctl dispatch dpms off
-        ;;
-    "󰷛 Lock and Turn Off Monitors")
-        loginctl lock-session && hyprctl dispatch dpms off
-        ;;
-    "󰩈 Log Out")
-        uwsm stop
-        ;;
-    "󰒲 Suspend")
-        systemctl suspend
-        ;;
-    " Reboot")
-        systemctl reboot
-        ;;
-    "󰑥 Soft Reboot")
-        systemctl soft-reboot
-        ;;
-    " Reboot into UEFI")
-        systemctl reboot --firmware-setup
-        ;;
-    " Reboot into Windows")
-        systemctl reboot --boot-loader-entry=auto-windows
-        ;;
-    "󰐥 Shutdown")
-        systemctl poweroff
-        ;;
+checkdeps() {
+    for cmd in "${@}"; do
+        if ! command -v "${cmd}" > /dev/null 2>&1; then
+            msg="Could not find: '${cmd}'."
+            echo ${msg} >&2
+            if command -v notify-send > /dev/null 2>&1; then
+                notify-send -u critical -i dialog-error "Missing Dependency" "${msg}"
+            fi
+
+            exit 1
+        fi
+    done
+}
+
+checkdeps "${LAUNCHER_CMD}"
+
+case $(printf "󱅞 Lock\n󰶐 Turn Off Monitors\n󰷛 Lock and Turn Off Monitors\n󰩈 Log Out\n󰒲 Suspend\n Reboot\n󰑥 Soft Reboot\n Reboot into UEFI\n Reboot into Windows\n󰐥 Shutdown" | "${LAUNCHER_CMD}" ${LAUNCHER_OPTS}) in
+    "󱅞 Lock") loginctl lock-session;;
+    "󰶐 Turn Off Monitors") hyprctl dispatch dpms off;;
+    "󰷛 Lock and Turn Off Monitors") loginctl lock-session && hyprctl dispatch dpms off;;
+    "󰩈 Log Out") uwsm stop;;
+    "󰒲 Suspend") systemctl suspend;;
+    " Reboot") systemctl reboot;;
+    "󰑥 Soft Reboot") systemctl soft-reboot;;
+    " Reboot into UEFI") systemctl reboot --firmware-setup;;
+    " Reboot into Windows") systemctl reboot --boot-loader-entry=auto-windows;;
+    "󰐥 Shutdown") systemctl poweroff;;
 esac

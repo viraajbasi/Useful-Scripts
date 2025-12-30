@@ -1,10 +1,21 @@
 #!/bin/sh
 # Require `curl`
 
-if ! command -v curl > /dev/null; then
-    echo "\"curl\" is not installed."
-    exit 1
-fi
+checkdeps() {
+    for cmd in "${@}"; do
+        if ! command -v "${cmd}" > /dev/null 2>&1; then
+            msg="Could not find: '${cmd}'."
+            echo ${msg} >&2
+            if command -v notify-send > /dev/null 2>&1; then
+                notify-send -u critical -i dialog-error "Missing Dependency" "${msg}"
+            fi
+
+            exit 1
+        fi
+    done
+}
+
+checkdeps curl
 
 LOCATION=""
 if [ -n "${WEATHER_LOCATION}" ]; then

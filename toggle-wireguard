@@ -1,10 +1,31 @@
 #!/bin/sh
 # Requires `wg-quick`
 
-if ! command -v wg-quick > /dev/null; then
-    echo "\"wg-quick\" is not installed."
+checkdeps() {
+    for cmd in "${@}"; do
+        if ! command -v "${cmd}" > /dev/null 2>&1; then
+            msg="Could not find: '${cmd}'."
+            echo ${msg} >&2
+            if command -v notify-send > /dev/null 2>&1; then
+                notify-send -u critical -i dialog-error "Missing Dependency" "${msg}"
+            fi
+
+            exit 1
+        fi
+    done
+}
+
+fatal() {
+    msg="$1"
+    echo "Runtime Error: $msg" >&2
+    if command -v notify-send >/dev/null 2>&1; then
+        notify-send -u critical -i dialog-error "Runtime Error" "$msg"
+    fi
+
     exit 1
-fi
+}
+
+checkdeps wg-quick notify-send
 
 CONF_FILE="vpn"
 VPN_STATUS="$(systemctl is-active wg-quick@${CONF_FILE}.service)"

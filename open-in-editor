@@ -1,24 +1,31 @@
 #!/bin/bash
 
-DMENU_CMD="fuzzel -d"
+LAUNCHER_CMD="fuzzel"
+LAUNCHER_OPTS="-d"
 EDITOR_CMD="code"
 START_DIR="${1:-$HOME}"
 
-if ! command -v $DMENU_CMD > /dev/null; then
-    echo "Could not find dmenu-compatible launcher."
-    exit 1
-fi
+checkdeps() {
+    for cmd in "${@}"; do
+        if ! command -v "${cmd}" > /dev/null 2>&1; then
+            msg="Could not find: '${cmd}'."
+            echo ${msg} >&2
+            if command -v notify-send > /dev/null 2>&1; then
+                notify-send -u critical -i dialog-error "Missing Dependency" "${msg}"
+            fi
 
-if ! command -v $EDITOR_CMD &> /dev/null; then
-    echo "Could not find Zed."
-    exit 1
-fi
+            exit 1
+        fi
+    done
+}
 
-SELECTION=$(find "$START_DIR" -mindepth 1 -type d -print 2> /dev/null | $DMENU_CMD)
+checkdeps "${LAUNCHER_CMD}" "${EDITOR_CMD}"
 
-if [ -z "$SELECTION" ]; then
+SELECTION=$(find "$START_DIR" -mindepth 1 -type d -print 2> /dev/null | "${LAUNCHER_CMD}" ${LAUNCHER_OPTS})
+
+if [ -z "${SELECTION}" ]; then
     echo "No selection made."
     exit 0
 fi
 
-$EDITOR_CMD "$SELECTION"
+exec "${EDITOR_CMD}" "${SELECTION}"

@@ -1,41 +1,75 @@
 #!/bin/sh
 # Requires "grimblast"
 
-if ! grimblast check > /dev/null; then
-    echo "\"grimblast\" is missing dependencies"
+checkdeps() {
+    for cmd in "${@}"; do
+        if ! command -v "${cmd}" > /dev/null 2>&1; then
+            msg="Could not find: '${cmd}'."
+            echo ${msg} >&2
+            if command -v notify-send > /dev/null 2>&1; then
+                notify-send -u critical -i dialog-error "Missing Dependency" "${msg}"
+            fi
+
+            exit 1
+        fi
+    done
+}
+
+fatal() {
+    msg="$1"
+    echo "Runtime Error: $msg" >&2
+    if command -v notify-send >/dev/null 2>&1; then
+        notify-send -u critical -i dialog-error "Runtime Error" "$msg"
+    fi
+
     exit 1
-fi
+}
+
+checkdeps grimblast notify-send xdg-user-dir
 
 FILE="$(xdg-user-dir PICTURES)/screenshots/$(date +%Y-%m-%d_%H-%m-%s).png"
 
-help_text() {
-    if [ -n "${1}" ]; then
-        error="${1}"
-        printf "Error: %s\n\n" "${1}"
-    fi
-
-    printf "Description: Take a screenshot using \"grimblast\" and send a notification.\n\nUsage:\n\tscreenshot {region|output|screen} <command>\n\nCommands:\n\t-h --help\tShow available commands.\n"
+usage() {
+    printf "Description: Take a screenshot using \"grimblast\" and send a notification.\n\n"
+    printf "Usage:\n\tscreenshot {region|output|screen} <command>\n\n"
+    printf "Commands:\n\t-h --help\tShow available commands.\n"
 }
 
-if [ "${1}" = "region" ]; then
-    grimblast --freeze copysave area "${FILE}" \
-        && notify-send -i screenshooter-symbolic "Screenshot" "Screenshot taken! It has been saved to '${FILE}' and copied to the clipboard." \
-        || notify-send -u critical -i error "Screenshot" "Screenshot failed!"
-    exit 0
-elif [ "${1}" = "output" ]; then
-    grimblast --freeze copysave output "${FILE}" \
-        && notify-send -i screenshooter-symbolic "Screenshot" "Screenshot taken! It has been saved to '${FILE}' and copied to the clipboard." \
-        || notify-send -u critical -i error "Screenshot" "Screenshot failed!"
-    exit 0
-elif [ "${1}" = "screen" ]; then
-    grimblast copysave screen "${FILE}" \
-        && notify-send -i screenshooter-symbolic "Screenshot" "Screenshot taken! It has been saved to '${FILE}' and copied to the clipboard." \
-        || notify-send -u critical -i error "Screenshot" "Screenshot failed!"
-    exit 0
-elif [ "${1}" = "-h" ] || [ "${1}" = "--help" ]; then
-    help_text
-    exit 0
-else
-    help_text "Unknown command"
-    exit 1
-fi
+success() {
+    notify-send -i screenshooter-symbolic "Screenshot" "Screenshot taken! It has been saved to '${FILE}' and copied to the clipboard."
+}
+
+fail() {
+    notify-send -u critical -i error "Screenshot" "Screenshot failed!"
+}
+
+case "${1:-}" in
+    region)
+        grimblast --freeze copysave area "${FILE}" \
+            && success \
+            || fail
+        exit 0
+        ;;
+    output)
+        grimblast --freeze copysave output "${FILE}" \
+            && success \
+            || fail
+        exit 0
+        ;;
+    screen)
+        grimblast copysave screen "${FILE}" \
+            && success \
+            || fail
+        exit 0
+        ;;
+    -h|--help)
+        help_text
+        exit 0
+        ;;
+    *)
+        usage
+        echo
+        fatal "Unknown Command: '${1-none}'."
+        exit 1
+        ;;
+esac

@@ -1,22 +1,39 @@
-#!/bin/bash
-# Requires `arch-wiki-docs`
-# Requires `fuzzel`
+#!/usr/bin/env bash
 
-if ! command -v $DMENU_CMD > /dev/null; then
-    echo "Could not find dmenu-compatible launcher."
-    exit 1
+BROWSER_CMD="xdg-open"
+LAUNCHER_CMD="fuzzel"
+LAUNCHER_OPTS="-d"
+
+checkdeps() {
+    for cmd in "${@}"; do
+        if ! command -v "${cmd}" > /dev/null 2>&1; then
+            msg="Could not find: '${cmd}'."
+            echo ${msg} >&2
+            if command -v notify-send > /dev/null 2>&1; then
+                notify-send -u critical -i dialog-error "Missing Dependency" "${msg}"
+            fi
+
+            exit 1
+        fi
+    done
+}
+
+if ! pacman -Qs arch-wiki-docs > /dev/null; then
+    echo "Could not find: 'arch-wiki-docs'. Install with 'sudo pacman -Syu arch-wiki-docs'." >&2
+    if command -v notify-send > /dev/null; then
+        notify-send -u critical -i dialog-error "Local Arch Wiki Error" "Could not find: 'arch-wiki-docs'. Install with 'sudo pacman -Syu arch-wiki-docs'."
+    fi
 fi
 
-DMENU_CMD="fuzzel -d"
-BROWSER="xdg-open"
-WIKIDIR=/usr/share/doc/arch-wiki/html/en/
+checkdeps "${BROWSER_CMD}" "${LAUNCHER_CMD}"
 
+WIKIDIR=/usr/share/doc/arch-wiki/html/en/
 ARTICLES=$(find ${WIKIDIR} -iname "*.html")
-CHOICE=$(printf '%s\n' "${ARTICLES[@]}" | cut -d '/' -f8- | sed 's/_/ /g;s/.html//g' | sort | ${DMENU_CMD} "$@")
+CHOICE=$(printf '%s\n' "${ARTICLES[@]}" | cut -d '/' -f8- | sed 's/_/ /g;s/.html//g' | sort | "${LAUNCHER_CMD}" ${LAUNCHER_OPTS} "$@")
 
 if [ "${CHOICE}" ]; then
     ARTICLE=$(printf '%s\n' "${WIKIDIR}${CHOICE}.html" | sed 's/ /_/g')
-    exec ${BROWSER} "${ARTICLE}"
+    exec ${BROWSER_CMD} "${ARTICLE}"
 else
     printf "Program Terminated\n"
 fi
